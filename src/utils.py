@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+import plotly.graph_objs as go
+import plotly.express as px
+
+from plotly.subplots import make_subplots
+
 COLOR = 'white'
 
 XMAX, XMIN = 120, 0
@@ -85,7 +90,7 @@ def draw_pitches_plotly(nrows, ncols, title_list=[], colorbar=False):
             fig.update_xaxes(range=[-1, 120+1], visible=False, row=i, col=j)
             fig.update_yaxes(range=[-1, 80+1], visible=False, row=i, col=j)
     
-    fig.update_layout(go.Layout(width=120*10, height=80*10, plot_bgcolor=twitter_color, paper_bgcolor=twitter_color, autosize=True, margin=dict(l=10, r=10, t=20, b=10), legend=dict(font=dict(color=COLOR))))
+    fig.update_layout(go.Layout(width=120*10*(ncols/2), height=80*10*(nrows/2), plot_bgcolor=twitter_color, paper_bgcolor=twitter_color, autosize=True, margin=dict(l=10, r=10, t=20, b=10), legend=dict(font=dict(color=COLOR))))
     
     for i in fig['layout']['annotations']:
         i['font'] = dict(size=15,color=COLOR)

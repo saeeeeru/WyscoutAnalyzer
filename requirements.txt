@@ -37,7 +37,7 @@ PyYAML==5.2
 requests==2.22.0
 s3transfer==0.2.1
 six==1.13.0
-streamlit==0.52.2
+streamlit==0.53.0
 toml==0.10.0
 toolz==0.10.0
 tornado==5.1.1
