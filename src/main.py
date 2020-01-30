@@ -59,6 +59,8 @@ def main():
     events_df = read_events_df(selected_competition)
     # events_df[events_df.matchId == selected_wyId]
 
+    st.echo('match summary')
+
     matchPeriod_list = st.multiselect('Which Half do you want to see data?', ['1H', '2H'])
 
     library = st.selectbox('Which Library do you want to visualize?', ['matplotlib(faster)', 'plotly(slowly, but detail)'])
