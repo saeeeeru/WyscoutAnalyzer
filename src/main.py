@@ -7,9 +7,23 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 from viz_func import vizualize_shot_points, visualize_pass_lines
+from utils import *
 
 base_dir = os.path.join('..')
 data_dir = os.path.join(base_dir, 'data', 'raw')
+
+def highlight_max(data, color='yellow'):
+    '''
+    highlight the maximum in a Series or DataFrame
+    '''
+    attr = 'background-color: {}'.format(color)
+    if data.ndim == 1:  # Series from .apply(axis=0) or axis=1
+        is_max = data == data.max()
+        return [attr if v else '' for v in is_max]
+    else:  # from .apply(axis=None)
+        is_max = data == data.max().max()
+        return pd.DataFrame(np.where(is_max, attr, ''),
+                            index=data.index, columns=data.columns)
 
 @st.cache
 def read_dfs():
@@ -59,7 +73,11 @@ def main():
     events_df = read_events_df(selected_competition)
     # events_df[events_df.matchId == selected_wyId]
 
-    st.echo('match summary')
+    st.header('match summary')
+    st.table(create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df).style.apply(highlight_max, axis=1))
+
+    st.header('detail event summary')
+    create_detail_events_df(events_df[events_df.matchId==selected_wyId], teams_df)
 
     matchPeriod_list = st.multiselect('Which Half do you want to see data?', ['1H', '2H'])
 

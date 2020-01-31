@@ -59,6 +59,7 @@ def create_match_summary_df(df_tmp, teams_df):
     r_duel_df.index = ['duel win rate']
     
     match_summary_df = pd.concat([score_df, shot_df, pass_df, r_pass_df, clear_df, foul_df, r_duel_df])
+    # match_summary_df = pd.concat([score_df, shot_df, pass_df, clear_df, foul_df])
     
     match_summary_df.columns = [teams_df[teams_df.wyId==teamId].name.values[0] for teamId in match_summary_df.columns.tolist()]
     
@@ -70,6 +71,11 @@ def create_detail_events_df(df_tmp, teams_df):
         summary = df_tmp[df_tmp.eventName==eventName].groupby(['teamName', 'subEventName']).size().to_frame()
         summary.columns = ['Number of actions']
 
-        st.echo(eventName)
-        st.dataframe(summary.reset_index(0).pivot_table(values=['Number of actions'], index=['subEventName'], columns=['teamName']).style.bar(vmin=summary.min(), vmax=summary.max()))
+        summary = summary.pivot_table(values=['Number of actions'], index=['subEventName'], columns=['teamName']).fillna(0)
+        # summary.columns = summary.columns.droplevel()
+
+        st.subheader(eventName)
+        st.table(summary.style.bar(vmin=0, vmax=summary.max().max()+10))
+        # st.dataframe(summary.style.bar())
+        # st.dataframe(summary, width=1000)
         
