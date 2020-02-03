@@ -74,7 +74,14 @@ def main():
     # events_df[events_df.matchId == selected_wyId]
 
     st.header('match summary')
-    st.table(create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df).style.apply(highlight_max, axis=1))
+    st.table(
+    # st.dataframe(
+        create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df)
+        .style
+        # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
+        .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
+        .apply(highlight_max, axis=1)
+        )
 
     st.header('detail event summary')
     create_detail_events_df(events_df[events_df.matchId==selected_wyId], teams_df)
