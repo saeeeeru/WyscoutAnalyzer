@@ -1,4 +1,4 @@
-import os
+import os, itertools
 
 import numpy as np
 import pandas as pd
@@ -43,6 +43,8 @@ st.title('WyScoutAnalyzer via wyscout dataset')
 competition_list = [infile.replace('matches_','').replace('.json','') for infile in os.listdir(os.path.join(data_dir, 'matches')) if infile.endswith('.json')]
 selected_competition = st.sidebar.selectbox('Which League/Tournament do you select?', competition_list)
 
+viz_mode = st.sidebar.radio("Which Analytics Summary do you check??", ('Each Match', 'Each Team'))
+
 @st.cache
 def read_events_df(selected_competition):
     events_df = pd.read_json(os.path.join(data_dir, 'events', f'events_{selected_competition}.json'))
@@ -60,49 +62,69 @@ def read_matches_df(selected_competition):
     # concate label, venue, date_time
     matches_df['name'] = matches_df[['label', 'venue', 'date_time']].apply(lambda xs: f'{xs[0]} @{xs[1]}, {xs[2].date()}', axis=1)
 
+    c_list = ['home_team_name', 'away_team_name', 'home_team_score', 'away_team_score']
+    for c in c_list:
+        matches_df[c] = np.zeros(len(matches_df))
+    matches_df[c_list] = [list(itertools.chain.from_iterable([v.split(' @')[0].split(' - ') for v in name.split(', ')[:2]])) for name in matches_df.name.tolist()]
+
     return matches_df.sort_values('date_time')
 
 def main():
-    matches_df = read_matches_df(selected_competition)
-
-    name_list = matches_df.name.tolist()
-    selected_match = st.selectbox('Which Match do you want to see data?', name_list)
-
-    selected_wyId = matches_df[matches_df.name == selected_match].wyId.values[0]
-
     events_df = read_events_df(selected_competition)
-    # events_df[events_df.matchId == selected_wyId]
+    matches_df = read_matches_df(selected_competition)
+    
+    if viz_mode == 'Each Match':
+        name_list = matches_df.name.tolist()
+        selected_match = st.selectbox('Which Match do you want to see data?', name_list)
 
-    st.header('match summary')
-    st.table(
-    # st.dataframe(
-        create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df)
-        .style
-        # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
-        .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
-        .apply(highlight_max, axis=1)
-        )
+        selected_wyId = matches_df[matches_df.name == selected_match].wyId.values[0]
 
-    st.header('detail event summary')
-    create_detail_events_df(events_df[events_df.matchId==selected_wyId], teams_df)
+        st.header('match summary')
+        st.table(
+        # st.dataframe(
+            create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df)
+            .style
+            # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
+            .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
+            .apply(highlight_max, axis=1)
+            )
 
-    matchPeriod_list = st.multiselect('Which Half do you want to see data?', ['1H', '2H'])
+        st.header('detail event summary')
+        create_detail_events_df(events_df[events_df.matchId==selected_wyId], teams_df)
 
-    library = st.selectbox('Which Library do you want to visualize?', ['matplotlib(faster)', 'plotly(slowly, but detail)'])
+        matchPeriod_list = st.multiselect('Which Half do you want to see data?', ['1H', '2H'])
 
-    try:
-        df_tmp = events_df[(events_df.matchId == selected_wyId)&(events_df.eventName=='Shot')&(events_df.matchPeriod.isin(matchPeriod_list))]
-        st.header('shot point')
-        vizualize_shot_points(df_tmp, teams_df, players_df, matchPeriod_list, library.split('(')[0])
+        library = st.selectbox('Which Library do you want to visualize?', ['matplotlib(faster)', 'plotly(slowly, but detail)'])
 
-        st.header('pass map')
+        try:
+            df_tmp = events_df[(events_df.matchId == selected_wyId)&(events_df.eventName=='Shot')&(events_df.matchPeriod.isin(matchPeriod_list))]
+            st.header('shot point')
+            vizualize_shot_points(df_tmp, teams_df, players_df, matchPeriod_list, library.split('(')[0])
 
-        subEventName_list = events_df[events_df.eventName=='Pass'].subEventName.unique().tolist()
-        df_tmp = events_df[(events_df.matchId==selected_wyId)&(events_df.eventName=='Pass')&(events_df.matchPeriod.isin(matchPeriod_list))]
-        visualize_pass_lines(df_tmp, teams_df, players_df, subEventName_list, matchPeriod_list, library.split('(')[0])
+            st.header('pass map')
 
-    except Exception:
-        st.error('please select 1H / 2H')
+            subEventName_list = events_df[events_df.eventName=='Pass'].subEventName.unique().tolist()
+            df_tmp = events_df[(events_df.matchId==selected_wyId)&(events_df.eventName=='Pass')&(events_df.matchPeriod.isin(matchPeriod_list))]
+            visualize_pass_lines(df_tmp, teams_df, players_df, subEventName_list, matchPeriod_list, library.split('(')[0])
+
+        except Exception:
+            st.error('please select 1H / 2H')
+
+    elif viz_mode == 'Each Team':
+        # teams_df
+        team_list = teams_df[teams_df.wyId.isin(events_df.teamId.tolist())].name.tolist()
+        selected_team_list = st.multiselect('Which Team do you want to see data?', team_list)
+        team_id_list = teams_df[teams_df.name.isin(selected_team_list)].wyId.tolist()
+
+        st.header('team summary')
+        st.table(
+            create_team_summary_df(events_df[events_df.teamId.isin(team_id_list)], teams_df)
+            .style
+            # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
+            .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
+            .apply(highlight_max, axis=1)
+            )
+
 
 if __name__ == '__main__':
     main()

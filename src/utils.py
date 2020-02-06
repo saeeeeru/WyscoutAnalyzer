@@ -3,6 +3,24 @@ import pandas as pd
 
 import streamlit as st
 
+def create_team_summary_df(df_tmp, teams_df):
+    # 得点数
+    score_s = df_tmp[df_tmp.eventName=='Shot'].groupby('teamId').tags.agg(lambda xs: np.sum([[101 in [tag_dict['id'] for tag_dict in tags]] for tags in xs])) 
+
+    penalty_s = df_tmp[df_tmp.subEventName=='Penalty'].groupby('teamId').tags.agg(lambda xs: np.sum([[101 in [tag_dict['id'] for tag_dict in tags]] for tags in xs])) 
+    for i in penalty_s.index:
+        score_s[i] += penalty_s[i]
+
+    score_df = score_s.fillna('0').to_frame().T
+    score_df.index = ['Score']
+
+    team_summary_df = pd.concat([score_df])
+
+    team_summary_df.columns = [teams_df[teams_df.wyId==teamId].name.values[0] for teamId in team_summary_df.columns.tolist()]
+
+    return team_summary_df
+
+
 def create_match_summary_df(df_tmp, teams_df):
     # スコア
     score_s = df_tmp[df_tmp.eventName=='Shot'].groupby('teamId').tags.agg(lambda xs: np.sum([[101 in [tag_dict['id'] for tag_dict in tags]] for tags in xs])) 
