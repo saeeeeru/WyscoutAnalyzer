@@ -116,14 +116,17 @@ def main():
         selected_team_list = st.multiselect('Which Team do you want to see data?', team_list)
         team_id_list = teams_df[teams_df.name.isin(selected_team_list)].wyId.tolist()
 
-        st.header('team summary')
-        st.table(
-            create_team_summary_df(events_df[events_df.teamId.isin(team_id_list)], teams_df)
-            .style
-            # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
-            .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
-            .apply(highlight_max, axis=1)
-            )
+        if len(selected_team_list) != 0:
+            st.header('team summary')
+            st.table(
+                create_team_summary_df(events_df[events_df.teamId.isin(team_id_list)], matches_df, teams_df, selected_team_list)
+                # .style
+                # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
+                # .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
+                # .apply(highlight_max, axis=1)
+                )
+        else:
+            st.error('Please select teams you want to analyze !!')
 
 
 if __name__ == '__main__':
