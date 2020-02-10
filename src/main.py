@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import streamlit as st
 
-from viz_func import vizualize_shot_points, visualize_pass_lines
+from viz_func import visualize_pass_sonars, vizualize_shot_points, visualize_pass_lines
 from utils import *
 
 base_dir = os.path.join('..')
@@ -125,6 +125,9 @@ def main():
                 # .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
                 # .apply(highlight_max, axis=1)
                 )
+
+            st.header("pass sonars")
+            visualize_pass_sonars(events_df[(events_df.teamId.isin(team_id_list))&(events_df.eventName=='Pass')])
         else:
             st.error('Please select teams you want to analyze !!')
 

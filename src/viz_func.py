@@ -1,7 +1,16 @@
+import math
+
+import numpy as np
+import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.lines import Line2D
+from matplotlib.projections import get_projection_class
+from matplotlib.patches import Arc
+from matplotlib import transforms
 
 import plotly.graph_objs as go
 import plotly.express as px
@@ -17,6 +26,78 @@ XMAX, XMIN = 120, 0
 YMAX, YMIN = 80, 0
 
 color_list = ['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#7f7f7f','#bcbd22','#17becf']
+
+x_bins = np.linspace(XMIN, XMAX, 6+1)
+y_bins = np.linspace(YMIN, YMAX, 5+1)
+angle_bins = np.linspace(-np.pi, np.pi, 12)
+
+def visualize_pass_sonars(df_tmp):
+    twitter_color = '#841d26'
+    # preprocessing and expand x, y
+    c_list = ['st_x', 'st_y', 'ed_x', 'ed_y']
+    for c in c_list:
+        df_tmp[c] = None
+    df_tmp[c_list] = df_tmp.apply(lambda xs: [XMAX*xs['positions'][0]['x']/100, YMAX*(1-xs['positions'][0]['y']/100), XMAX*xs['positions'][1]['x']/100, YMAX*(1-xs['positions'][1]['y']/100)], result_type='expand', axis=1)
+    
+    df_tmp['angle'] = df_tmp.apply(lambda xs: -np.arctan2(xs['ed_y']-xs['st_y'], xs['ed_x']-xs['st_x']), axis=1)
+    df_tmp['length'] = df_tmp.apply(lambda xs: math.sqrt((xs['ed_y']-xs['st_y'])**2+(xs['ed_x']-xs['st_x'])**2), axis=1)
+
+    x_cut = pd.cut(df_tmp['st_x'], x_bins, right = True)
+    y_cut = pd.cut(df_tmp['st_y'], y_bins, right = True)
+    angle_cut = pd.cut(df_tmp['angle'], angle_bins, right = True)
+
+    summary = df_tmp.groupby([x_cut, y_cut, angle_cut]).agg({'eventName':'count', 'length':'mean'}).reset_index()
+
+    fig, ax = draw_pitches_matplotlib(nrows=1, ncols=1, colorbar=True)
+    cmap = plt.get_cmap('inferno')
+    norm = plt.Normalize(summary["length"].min(), 30) ##Change 30 to whatever you want the upper bound for the length of the pass to be in the colormap. Change to "team["pass.length"].max()" for the maximum
+    ar = np.array(summary["length"])
+    sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, orientation="horizontal", fraction=0.046, pad=0.04)
+    cbar.ax.set_xlabel("Average length of passes in a direction", fontstyle = "italic")
+    
+    # plot lines
+    for i in range(1, 5):
+        ax.plot([XMIN, XMAX], [YMAX*(i/5), YMAX*(i/5)], color='white', linestyle='--')
+
+    for i in range(1, 6):
+        ax.plot([XMAX*(i/6), XMAX*(i/6)], [YMIN, YMAX], color='white', linestyle='--')
+
+    # plot pass sonar
+    summary['x_'] = summary.apply(lambda xs: xs['st_x'].mid, axis=1)
+    summary['y_'] = summary.apply(lambda xs: xs['st_y'].mid, axis=1)
+
+    # """
+    for x_ in summary.x_.unique():
+        for y_ in summary.y_.unique():
+            # x, y = x_.mid, y_.mid
+            x, y = x_, y_
+            ax_sub = inset_axes(ax, width=0.9, height=0.9, loc=10, 
+                               bbox_to_anchor=(x, y),
+                                bbox_transform=ax.transData, 
+                                borderpad=0.0, axes_class=get_projection_class("polar"))
+            length = summary[(summary.x_==x_)&(summary.y_==y_)].length.values
+            radii = summary[(summary.x_==x_)&(summary.y_==y_)].eventName.values
+            cm = cmap(norm(length))
+            angles = [angle.mid for angle in summary[(summary.x_==x_)&(summary.y_==y_)].angle]
+            bars = ax_sub.bar(angles, radii, width=0.3, bottom=0.0)
+            ax_sub.set_xticklabels([]); ax_sub.set_yticks([])
+            ax_sub.set_ylim([0, summary.eventName.max()])
+            ax_sub.yaxis.grid(False); ax_sub.xaxis.grid(False)
+            ax_sub.spines['polar'].set_visible(False)
+            ax_sub.patch.set_facecolor(twitter_color)
+            ax_sub.patch.set_alpha(0.1)
+
+            cm = cmap(norm(length))
+            for r, bar in zip(cm, bars):
+                bar.set_facecolor(r)
+    # """
+
+        # ax.set_title(title, fontstyle='italic')
+
+    st.pyplot(fig, facecolor=fig.get_facecolor(), bbox_inches = 'tight')
+
 
 def vizualize_shot_points(df_tmp, teams_df, players_df, matchPeriod_list, library):
     if library == 'matplotlib':
@@ -164,15 +245,9 @@ def visualize_pass_lines(df_tmp, teams_df, players_df, subEventName_list, matchP
         st.plotly_chart(fig)
 
 def draw_pitches_matplotlib(nrows, ncols, colorbar=False):
-    twitter_color = '#841d26'
-    
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(10*ncols, 8*nrows if colorbar else 7*nrows), facecolor=twitter_color)
-    
-    fig.patch.set_facecolor('#141d26')
-    
-    for ax in axes.flatten():
+    def set_properties(ax):
         ax.patch.set_facecolor('#141d26')
-        
+            
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
         ax.spines['left'].set_visible(False)
@@ -205,6 +280,20 @@ def draw_pitches_matplotlib(nrows, ncols, colorbar=False):
         ax.plot([114, 120],  [50, 50], color=COLOR)
 
         ax.tick_params(bottom=False, left=False, labelbottom=False, labelleft=False)
+
+        return ax
+
+    twitter_color = '#841d26'
+    
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(10*ncols, 8*nrows if colorbar else 7*nrows), facecolor=twitter_color)
+    
+    fig.patch.set_facecolor('#141d26')
+
+    if nrows==1 and ncols==1:
+        set_properties(axes)
+    else:    
+        for ax in axes.flatten():
+            set_properties(ax)
 
     return fig, axes
 
