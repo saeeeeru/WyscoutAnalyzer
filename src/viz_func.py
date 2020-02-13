@@ -20,6 +20,10 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 COLOR = 'white'
+plt.rcParams['text.color'] = COLOR
+plt.rcParams['axes.labelcolor'] = COLOR
+plt.rcParams['xtick.color'] = COLOR
+plt.rcParams['ytick.color'] = COLOR
 cmap = plt.get_cmap('tab10')
 
 XMAX, XMIN = 120, 0
