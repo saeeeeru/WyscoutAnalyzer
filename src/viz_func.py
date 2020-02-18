@@ -22,9 +22,11 @@ import streamlit as st
 COLOR = 'white'
 plt.rcParams['text.color'] = COLOR
 plt.rcParams['axes.labelcolor'] = COLOR
+plt.rcParams['axes.edgecolor'] = COLOR
 plt.rcParams['xtick.color'] = COLOR
 plt.rcParams['ytick.color'] = COLOR
 cmap = plt.get_cmap('tab10')
+twitter_color = '#141d26'
 
 XMAX, XMIN = 120, 0
 YMAX, YMIN = 80, 0
@@ -35,72 +37,111 @@ x_bins = np.linspace(XMIN, XMAX, 6+1)
 y_bins = np.linspace(YMIN, YMAX, 5+1)
 angle_bins = np.linspace(-np.pi, np.pi, 12)
 
-def visualize_pass_sonars(df_tmp):
+minute = 10; end = 45+minute+1
+matchPeriod_list = ['1H', '2H']
+
+def visualize_score_time_summary(events_df, teams_df):
+    c_name = 'Number of Goals'
+    teamId_list = events_df.teamId.unique().tolist()
+    goal_time_summary = events_df[events_df.eventName.isin(['Shot', 'Free Kick'])].groupby(['teamId', 'matchPeriod', pd.cut(events_df[events_df.eventName.isin(['Shot', 'Free Kick'])].eventSec/60, np.arange(-1, end, minute))]).tags.agg(lambda xs: np.sum([[(101 in [tag_dict['id'] for tag_dict in tags])|(102 in [tag_dict['id'] for tag_dict in tags])] for tags in xs])).reset_index() 
+
+    N = len(goal_time_summary.eventSec.unique().tolist())
+    name_dict = {inter:f'{inter.left+1}~{inter.right}' if (i!=0)&(i!=N-1) else f'~{inter.right}' if i==0 else f'{inter.left+1}~' for i, inter in enumerate(goal_time_summary.eventSec.unique().tolist())}
+
+    goal_time_summary['name'] = goal_time_summary.eventSec.apply(lambda x: name_dict[x])
+    goal_time_summary = goal_time_summary.rename(columns={'tags':c_name})
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(15, 6), sharex=True, sharey=True, facecolor=twitter_color)
+    for i, matchPeriod in enumerate(matchPeriod_list):
+        ax = axes[i]
+        for teamId in teamId_list:
+            team_name = teams_df[teams_df.wyId==teamId].name.values[0]
+    #         shot_time_summary[(shot_time_summary.teamId==teamId)&(shot_time_summary.matchPeriod==matchPeriod)].plot(x='name', y=c_name, kind='bar', label=team_name, rot=0, ax=ax)
+            goal_time_summary[(goal_time_summary.teamId==teamId)&(goal_time_summary.matchPeriod==matchPeriod)].plot(x='name', y=c_name, label=team_name, marker='o', markersize=10, linestyle='dashed', linewidth=1, ax=ax, legend=i==1)
+        
+        ax.set_xticks(range(len(name_dict))); ax.set_xticklabels(list(name_dict.values()))
+        ax.set_xlim([-0.25, len(name_dict)-1+0.25])
+        ax.set_ylabel(c_name); ax.set_xlabel('time'); ax.set_title(matchPeriod)
+        ax.patch.set_facecolor(twitter_color)
+        ax.spines['right'].set_visible(False); ax.spines['top'].set_visible(False)
+        ax.grid(axis='y'); ax.patch.set_facecolor(twitter_color)
+        if i == 1:
+            ax.legend(facecolor=twitter_color);
+            ax.spines['left'].set_visible(False)
+        
+    fig.patch.set_facecolor(twitter_color)
+    st.pyplot(fig, facecolor=fig.get_facecolor(), bbox_inches = 'tight')
+
+
+def visualize_pass_sonars(events_df, teams_df):
     twitter_color = '#841d26'
     # preprocessing and expand x, y
     c_list = ['st_x', 'st_y', 'ed_x', 'ed_y']
-    for c in c_list:
-        df_tmp[c] = None
-    df_tmp[c_list] = df_tmp.apply(lambda xs: [XMAX*xs['positions'][0]['x']/100, YMAX*(1-xs['positions'][0]['y']/100), XMAX*xs['positions'][1]['x']/100, YMAX*(1-xs['positions'][1]['y']/100)], result_type='expand', axis=1)
-    
-    df_tmp['angle'] = df_tmp.apply(lambda xs: -np.arctan2(xs['ed_y']-xs['st_y'], xs['ed_x']-xs['st_x']), axis=1)
-    df_tmp['length'] = df_tmp.apply(lambda xs: math.sqrt((xs['ed_y']-xs['st_y'])**2+(xs['ed_x']-xs['st_x'])**2), axis=1)
+    teamId_list = events_df.teamId.unique().tolist()
+    for idx, teamId in enumerate(teamId_list):
+        fig, ax = draw_pitches_matplotlib(nrows=1, ncols=1, colorbar=True)
+        df_tmp = events_df[events_df.teamId==teamId]
+        team_name = teams_df[teams_df.wyId==teamId].name.values[0]
+        ax.set_title(team_name, fontstyle='italic')
+        for c in c_list:
+            df_tmp[c] = None
+        df_tmp[c_list] = df_tmp.apply(lambda xs: [XMAX*xs['positions'][0]['x']/100, YMAX*(1-xs['positions'][0]['y']/100), XMAX*xs['positions'][1]['x']/100, YMAX*(1-xs['positions'][1]['y']/100)], result_type='expand', axis=1)
+        
+        # df_tmp['angle'] = df_tmp.apply(lambda xs: -np.arctan2(xs['ed_y']-xs['st_y'], xs['ed_x']-xs['st_x']), axis=1)
+        df_tmp['angle'] = df_tmp.apply(lambda xs: np.arctan2(xs['ed_y']-xs['st_y'], xs['ed_x']-xs['st_x']), axis=1)
+        df_tmp['length'] = df_tmp.apply(lambda xs: math.sqrt((xs['ed_y']-xs['st_y'])**2+(xs['ed_x']-xs['st_x'])**2), axis=1)
 
-    x_cut = pd.cut(df_tmp['st_x'], x_bins, right = True)
-    y_cut = pd.cut(df_tmp['st_y'], y_bins, right = True)
-    angle_cut = pd.cut(df_tmp['angle'], angle_bins, right = True)
+        x_cut = pd.cut(df_tmp['st_x'], x_bins, right = True)
+        y_cut = pd.cut(df_tmp['st_y'], y_bins, right = True)
+        angle_cut = pd.cut(df_tmp['angle'], angle_bins, right = True)
 
-    summary = df_tmp.groupby([x_cut, y_cut, angle_cut]).agg({'eventName':'count', 'length':'mean'}).reset_index()
+        summary = df_tmp.groupby([x_cut, y_cut, angle_cut]).agg({'eventName':'count', 'length':'mean'}).reset_index()
 
-    fig, ax = draw_pitches_matplotlib(nrows=1, ncols=1, colorbar=True)
-    cmap = plt.get_cmap('inferno')
-    norm = plt.Normalize(summary["length"].min(), 30) ##Change 30 to whatever you want the upper bound for the length of the pass to be in the colormap. Change to "team["pass.length"].max()" for the maximum
-    ar = np.array(summary["length"])
-    sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, orientation="horizontal", fraction=0.046, pad=0.04)
-    cbar.ax.set_xlabel("Average length of passes in a direction", fontstyle = "italic")
-    
-    # plot lines
-    for i in range(1, 5):
-        ax.plot([XMIN, XMAX], [YMAX*(i/5), YMAX*(i/5)], color='white', linestyle='--')
+        cmap = plt.get_cmap('inferno')
+        norm = plt.Normalize(summary["length"].min(), 30) ##Change 30 to whatever you want the upper bound for the length of the pass to be in the colormap. Change to "team["pass.length"].max()" for the maximum
+        ar = np.array(summary["length"])
+        sm = matplotlib.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, orientation="horizontal", fraction=0.046, pad=0.04)
+        cbar.ax.set_xlabel("Average length of passes in a direction", fontstyle = "italic")
+        
+        # plot lines
+        for i in range(1, 5):
+            ax.plot([XMIN, XMAX], [YMAX*(i/5), YMAX*(i/5)], color='white', linestyle='--')
 
-    for i in range(1, 6):
-        ax.plot([XMAX*(i/6), XMAX*(i/6)], [YMIN, YMAX], color='white', linestyle='--')
+        for i in range(1, 6):
+            ax.plot([XMAX*(i/6), XMAX*(i/6)], [YMIN, YMAX], color='white', linestyle='--')
 
-    # plot pass sonar
-    summary['x_'] = summary.apply(lambda xs: xs['st_x'].mid, axis=1)
-    summary['y_'] = summary.apply(lambda xs: xs['st_y'].mid, axis=1)
+        # plot pass sonar
+        summary['x_'] = summary.apply(lambda xs: xs['st_x'].mid, axis=1)
+        summary['y_'] = summary.apply(lambda xs: xs['st_y'].mid, axis=1)
 
-    # """
-    for x_ in summary.x_.unique():
-        for y_ in summary.y_.unique():
-            # x, y = x_.mid, y_.mid
-            x, y = x_, y_
-            ax_sub = inset_axes(ax, width=0.9, height=0.9, loc=10, 
-                               bbox_to_anchor=(x, y),
-                                bbox_transform=ax.transData, 
-                                borderpad=0.0, axes_class=get_projection_class("polar"))
-            length = summary[(summary.x_==x_)&(summary.y_==y_)].length.values
-            radii = summary[(summary.x_==x_)&(summary.y_==y_)].eventName.values
-            cm = cmap(norm(length))
-            angles = [angle.mid for angle in summary[(summary.x_==x_)&(summary.y_==y_)].angle]
-            bars = ax_sub.bar(angles, radii, width=0.3, bottom=0.0)
-            ax_sub.set_xticklabels([]); ax_sub.set_yticks([])
-            ax_sub.set_ylim([0, summary.eventName.max()])
-            ax_sub.yaxis.grid(False); ax_sub.xaxis.grid(False)
-            ax_sub.spines['polar'].set_visible(False)
-            ax_sub.patch.set_facecolor(twitter_color)
-            ax_sub.patch.set_alpha(0.1)
+        # """
+        for x_ in summary.x_.unique():
+            for y_ in summary.y_.unique():
+                # x, y = x_.mid, y_.mid
+                x, y = x_, y_
+                ax_sub = inset_axes(ax, width=0.9, height=0.9, loc=10, 
+                                   bbox_to_anchor=(x, y),
+                                    bbox_transform=ax.transData, 
+                                    borderpad=0.0, axes_class=get_projection_class("polar"))
+                length = summary[(summary.x_==x_)&(summary.y_==y_)].length.values
+                radii = summary[(summary.x_==x_)&(summary.y_==y_)].eventName.values
+                cm = cmap(norm(length))
+                angles = [angle.mid for angle in summary[(summary.x_==x_)&(summary.y_==y_)].angle]
+                bars = ax_sub.bar(angles, radii, width=0.3, bottom=0.0)
+                ax_sub.set_xticklabels([]); ax_sub.set_yticks([])
+                ax_sub.set_ylim([0, summary.eventName.max()])
+                ax_sub.yaxis.grid(False); ax_sub.xaxis.grid(False)
+                ax_sub.spines['polar'].set_visible(False)
+                ax_sub.patch.set_facecolor(twitter_color)
+                ax_sub.patch.set_alpha(0.1)
 
-            cm = cmap(norm(length))
-            for r, bar in zip(cm, bars):
-                bar.set_facecolor(r)
-    # """
-
-        # ax.set_title(title, fontstyle='italic')
-
-    st.pyplot(fig, facecolor=fig.get_facecolor(), bbox_inches = 'tight')
+                cm = cmap(norm(length))
+                for r, bar in zip(cm, bars):
+                    bar.set_facecolor(r)
+        # """
+        st.pyplot(fig, facecolor=fig.get_facecolor(), bbox_inches = 'tight')
 
 
 def vizualize_shot_points(df_tmp, teams_df, players_df, matchPeriod_list, library):
