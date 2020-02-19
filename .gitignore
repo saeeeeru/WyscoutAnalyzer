@@ -1,4 +1,6 @@
 data/
+data.zip
+
 !data/README.md
 !data/processed/tag.csv
 
