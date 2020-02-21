@@ -40,6 +40,26 @@ angle_bins = np.linspace(-np.pi, np.pi, 12)
 minute = 10; end = 45+minute+1
 matchPeriod_list = ['1H', '2H']
 
+def visualize_ball_hunt(events_df, teams_df):
+    flg_duel_df = events_df[events_df.eventName=='Duel'].tags.apply(lambda x_list: 702 in [x_dict['id'] for x_dict in x_list]).reset_index()
+    flg_pass_df = events_df[events_df.eventName=='Pass'].tags.apply(lambda x_list: (1401 in [x_dict['id'] for x_dict in x_list])&(1801 in [x_dict['id'] for x_dict in x_list])).reset_index()
+    events_df_tmp = pd.concat([events_df.loc[flg_duel_df[flg_duel_df['tags']==1]['index'], :], events_df.loc[flg_pass_df[flg_pass_df['tags']==1]['index'],:]])
+    events_df_tmp[['x', 'y']] =  events_df_tmp.apply(lambda xs: [XMAX*xs['positions'][0]['x']/100, YMAX*(1-xs['positions'][0]['y']/100)], result_type='expand', axis=1)
+
+    teamId_list = events_df_tmp.teamId.unique().tolist()
+    fig, axes = draw_pitches_matplotlib(nrows=len(teamId_list), ncols=1)
+
+    for i, teamId in enumerate(teamId_list):
+        ax = axes[i]
+        name = teams_df[teams_df.wyId==teamId].name.values[0]
+        ax.set_title(name)
+        df_tmp = events_df_tmp[(events_df_tmp.teamId==teamId)]
+    #     ax.hist2d(df_tmp.x.values, df_tmp.y.values, bins=[20, 18], cmap=matplotlib.cm.bone, alpha=0.9)
+        ax.hist2d(df_tmp.x.values, df_tmp.y.values, bins=[18, 15], alpha=0.9)
+        ax.set_facecolor(twitter_color)
+
+    st.pyplot(fig, facecolor=twitter_color, bbox_inches='tight')
+
 def visualize_score_time_summary(events_df, teams_df):
     c_name = 'Number of Goals'
     teamId_list = events_df.teamId.unique().tolist()

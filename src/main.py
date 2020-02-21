@@ -129,6 +129,8 @@ def main():
             visualize_score_time_summary(events_df[events_df.teamId.isin(team_id_list)], teams_df)
             st.header("pass sonars")
             visualize_pass_sonars(events_df[(events_df.teamId.isin(team_id_list))&(events_df.eventName=='Pass')], teams_df)
+            st.header("ball hunt")
+            visualize_ball_hunt(events_df[(events_df.teamId.isin(team_id_list))], teams_df)
         else:
             st.error('Please select teams you want to analyze !!')
 
