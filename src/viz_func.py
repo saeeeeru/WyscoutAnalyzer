@@ -180,7 +180,7 @@ def vizualize_shot_points(df_tmp, teams_df, players_df, matchPeriod_list, librar
                 ax.scatter(x=st_x, y=st_y, c = cmap(1) if 101 in id_list else cmap(0), label='success' if 101 in id_list else 'fail')
 
             if i == len(matchPeriod_list)*2-1:
-                ax.legend([Line2D([0], [0], color=cmap(j)) for j in range(2)], ['success', 'failure'], loc='lower right')
+                ax.legend([Line2D([0], [0], color=cmap(j)) for j in range(2)], ['success', 'failure'], loc='lower right', facecolor=twitter_color)
 
         st.pyplot(fig, facecolor=fig.get_facecolor(), bbox_inches = 'tight')
 
@@ -255,7 +255,7 @@ def visualize_pass_lines(df_tmp, teams_df, players_df, subEventName_list, matchP
 
 
                 if i == len(matchPeriod_list)*2-1:
-                    ax.legend([Line2D([0], [0], color=cmap(j)) for j in range(len(subEventName_list))], subEventName_list, loc='lower right')
+                    ax.legend([Line2D([0], [0], color=cmap(j)) for j in range(len(subEventName_list))], subEventName_list, loc='lower right', facecolor=twitter_color)
 
         st.success("Done!!")
         st.pyplot(fig, facecolor=fig.get_facecolor(), bbox_inches = 'tight')
