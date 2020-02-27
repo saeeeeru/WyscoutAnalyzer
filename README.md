@@ -1,18 +1,16 @@
 # WyscoutAnalyzer
-There are programs, notebooks for analysis of Wyscout Dataset
+## overview
+There are source code for vizualization and notebooks for analysis of Wyscout Dataset
 
-Overview
-this project is scrum team of PredictPeopleFlow
-
-Directory Tree
+## Directory Tree
 ---------------------
     .
     ├── README.md          <- The top-level README for developers using this project.
     │
     ├── data               <- Dataset Dirctory
     │   │
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
+    │   ├── raw            <- The original, immutable data dump.
+    │   └── processed      <- The final, canonical data sets for modeling.
     │
     ├── notebook          <- Jupyter notebooks. Naming convention is a number (for ordering),
     │   │                     the creator's initials, and a short `-` delimited description, e.g.
@@ -33,18 +31,8 @@ Directory Tree
     └── src                <- Source code in this project.
         │
         ├── __init__.py
-        ├── main.py                  <- Learn / Predict pipeline
-        ├── dataset.py               <- Dataset class
-        ├── transformer.py           <- Transformer class
-        ├── trainer.py               <- Trainer class（in the future, we rename class）
-        ├── logger.py                <- Logger class
-        ├── models                   <- Model class Directory
-        │   ├── __init__.py
-        │   └── model_{LibraryName / MethodType / Author Name}.py     <- Divided by using Librart, Method, Author Name
-        │
-        └── utils                    <- Utils Directory、Modules diveded by Big Label
-            |                           Big Label = math, visualization, ...
-            ├── __init__.py
-            ├── math_func.py
-            └── visualization_func.py
+        ├── main.py                  <- main application program
+        ├── utils.py                 <- utility functions
+        └── viz_func.py              <- vizualization functions
+        
 ---------------------
