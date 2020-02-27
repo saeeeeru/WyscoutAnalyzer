@@ -48,8 +48,8 @@ players_df, teams_df = read_dfs(selected_competition)
 viz_mode = st.sidebar.radio("Which Analytics Summary do you check??", ('Each Match', 'Each Team'))
 
 @st.cache
-def read_events_df(selected_competition, selected_wyId):
-    events_df = pd.read_json(os.path.join(data_dir, 'events', selected_competition, f'{selected_wyId}.json'))
+def read_events_df(selected_competition, wyId_list):
+    events_df = pd.concat([pd.read_json(os.path.join(data_dir, 'events', selected_competition, f'{wyId}.json')) for wyId in wyId_list])
     return events_df
 
 @st.cache
@@ -79,7 +79,7 @@ def main():
         selected_match = st.selectbox('Which Match do you want to see data?', name_list)
 
         selected_wyId = matches_df[matches_df.name == selected_match].wyId.values[0]
-        events_df = read_events_df(selected_competition, selected_wyId)
+        events_df = read_events_df(selected_competition, [selected_wyId])
 
         st.header('match summary')
         st.table(
@@ -117,24 +117,25 @@ def main():
         team_list = teams_df.name.tolist()
         selected_team_list = st.multiselect('Which Team do you want to see data?', team_list)
         teamId_list = teams_df[teams_df.name.isin(selected_team_list)].wyId.tolist()
-        # to do : get list of matchId from teamId
-        events_df = 
 
         if len(selected_team_list) != 0:
+            matchId_list = np.unique(list(itertools.chain.from_iterable([matches_df[matches_df.name.str.contains(selected_team)].wyId.tolist() for selected_team in selected_team_list]))).tolist()
+            events_df = read_events_df(selected_competition, matchId_list)
+
             st.header('team summary')
             st.table(
-                create_team_summary_df(events_df, matches_df, teams_df, selected_team_list)
+                create_team_summary_df(events_df[events_df.teamId.isin(teamId_list)], matches_df, teams_df, selected_team_list)
                 # .style
                 # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
                 # .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
                 # .apply(highlight_max, axis=1)
                 )
             st.header('goal time')
-            visualize_score_time_summary(events_df, teams_df)
+            visualize_score_time_summary(events_df[events_df.teamId.isin(teamId_list)], teams_df)
             st.header("pass sonars")
-            visualize_pass_sonars(events_df[(events_df.eventName=='Pass')], teams_df)
+            visualize_pass_sonars(events_df[events_df.teamId.isin(teamId_list)&(events_df.eventName=='Pass')], teams_df)
             st.header("ball hunt")
-            visualize_ball_hunt(events_df, teams_df)
+            visualize_ball_hunt(events_df[events_df.teamId.isin(teamId_list)], teams_df)
         else:
             st.error('Please select teams you want to analyze !!')
 
