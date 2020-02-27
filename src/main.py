@@ -9,15 +9,16 @@ import streamlit as st
 from viz_func import *
 from utils import *
 
-base_dir = os.path.join('..')
+local_mode = False
+
+if local_mode:
+    base_dir = os.path.join('..')
+else:
+    base_dir = os.path.join('https://raw.githubusercontent.com','saeeeru','WyscoutAnalyzer','develop')
+
+data_dir = os.path.join(base_dir, 'data', 'raw')
 
 competition_list = ['France', 'Spain', 'Germany', 'European_Championship', 'World_Cup', 'Italy', 'England']
-
-local_mode = False
-if local_mode:
-    data_dir = os.path.join(base_dir, 'data', 'raw')
-else:
-    data_dir = os.path.join('https://raw.githubusercontent.com','saeeeru','WyscoutAnalyzer','develop')
 
 def highlight_max(data, color='yellow'):
     '''
