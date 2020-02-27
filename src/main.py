@@ -14,7 +14,7 @@ local_mode = False
 if local_mode:
     base_dir = os.path.join('..')
 else:
-    base_dir = os.path.join('https://raw.githubusercontent.com','saeeeru','WyscoutAnalyzer','develop')
+    base_dir = os.path.join('https://raw.githubusercontent.com','saeeeeru','WyscoutAnalyzer','develop')
 
 data_dir = os.path.join(base_dir, 'data', 'raw')
 
