@@ -1,20 +1,43 @@
 import os, itertools
+import requests
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import streamlit as st
+from PIL import Image
 
 from viz_func import *
 from utils import *
 
-local_mode = False
+args = parse_args()
 
-if local_mode:
-    base_dir = os.path.join('..')
-else:
+if args.env == "local":
+    base_dir = os.path.join(".")
+elif args.env == "heroku":
     base_dir = os.path.join('https://raw.githubusercontent.com','saeeeeru','WyscoutAnalyzer','develop')
+else:
+    exit(9)
+
+# get image
+image_path = os.path.join(base_dir, "assets", "profile.JPG")
+md_path = os.path.join(base_dir, "assets", "PROFILE.md")
+if args.env == "local":
+    image = Image.open(image_path)
+    with open(md_path, "r") as fi:
+        profile_md = fi.read()
+else:
+    profile_md = requests.get(md_path).content.decode(encoding="utf-8")
+    image = requests.get(image_path).content
+
+# Use the full page instead of a narrow central column
+st.beta_set_page_config(
+        page_title="WyScoutAnalyzer",
+        page_icon=image,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
 data_dir = os.path.join(base_dir, 'data', 'raw')
 
@@ -44,16 +67,23 @@ def read_dfs(selected_competition):
     
     return players_df, teams_df
 
-st.title('WyScoutAnalyzer via wyscout dataset')
+st.sidebar.title('WyScoutAnalyzer via wyscout dataset')
+st.sidebar.markdown("")
 
 selected_competition = st.sidebar.selectbox('Which League/Tournament do you select?', competition_list)
 
 players_df, teams_df = read_dfs(selected_competition)
 
-
 viz_mode = st.sidebar.radio("Which Analytics Summary do you check??", ('Each Match', 'Each Team'))
 
-@st.cache
+st.sidebar.markdown("")
+st.sidebar.markdown("")
+st.sidebar.image(image, caption="@saeeeeru", use_column_width=True)
+st.sidebar.info(profile_md)
+st.sidebar.markdown("")
+st.sidebar.markdown("")
+
+@st.cache(allow_output_mutation=True)
 def read_events_df(selected_competition, wyId_list):
     events_df = pd.concat([pd.read_json(os.path.join(data_dir, 'events', selected_competition, f'{wyId}.json')) for wyId in wyId_list])
     return events_df
@@ -82,27 +112,33 @@ def main():
     
     if viz_mode == 'Each Match':
         name_list = matches_df.name.tolist()
-        selected_match = st.selectbox('Which Match do you want to see data?', name_list)
+        match_expander = st.beta_expander('Expand match select box')
+        with match_expander:
+            selected_match = st.selectbox('Which Match do you want to see data?', name_list)
 
         selected_wyId = matches_df[matches_df.name == selected_match].wyId.values[0]
         events_df = read_events_df(selected_competition, [selected_wyId])
 
-        st.header('match summary')
-        st.table(
-        # st.dataframe(
-            create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df)
-            .style
-            # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
-            .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
-            .apply(highlight_max, axis=1)
-            )
+        col_list = st.beta_columns(3)
+        with col_list[0]:
+            st.header('match summary')
+            st.table(
+            # st.dataframe(
+                create_match_summary_df(events_df[events_df.matchId==selected_wyId], teams_df)
+                .style
+                # .set_table_styles([{'selector': 'td', 'props': [('font-size', '20pt')]}])
+                .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
+                .apply(highlight_max, axis=1)
+                )
 
-        st.header('detail event summary')
-        create_detail_events_df(events_df, teams_df)
+        create_detail_events_df(events_df, teams_df, col_list[1:])
 
-        matchPeriod_list = st.multiselect('Which Half do you want to see data?', ['1H', '2H'])
+        col_list = st.beta_columns(2)
+        with col_list[0]:
+            matchPeriod_list = st.multiselect('Which Half do you want to see data?', ['1H', '2H'])
 
-        library = st.selectbox('Which Library do you want to visualize?', ['matplotlib(faster)', 'plotly(slowly, but detail)'])
+        with col_list[1]:
+            library = st.selectbox('Which Library do you want to visualize?', ['matplotlib(faster)', 'plotly(slowly, but detail)'])
 
         try:
             df_tmp = events_df[(events_df.eventName=='Shot')&(events_df.matchPeriod.isin(matchPeriod_list))]

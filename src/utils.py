@@ -1,7 +1,17 @@
+import argparse
+import urllib
+
 import numpy as np
 import pandas as pd
 
 import streamlit as st
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default="local")
+    args = parser.parse_args()
+
+    return args
 
 def create_team_summary_df(df_tmp, matches_df, teams_df, selected_team_list):
     # 試合数
@@ -143,22 +153,23 @@ def create_match_summary_df(df_tmp, teams_df):
     
     return match_summary_df
 
-def create_detail_events_df(df_tmp, teams_df):
+def create_detail_events_df(df_tmp, teams_df, col_list):
     df_tmp['teamName'] = df_tmp.teamId.apply(lambda x: teams_df[teams_df.wyId==x].name.values[0])
-    for eventName in ['Pass', 'Duel']:    
+    for eventName, col in zip(['Pass', 'Duel'], col_list):
         summary = df_tmp[df_tmp.eventName==eventName].groupby(['teamName', 'subEventName']).size().to_frame()
         summary.columns = ['Number of Actions']
 
         summary = summary.pivot_table(values=['Number of Actions'], index=['subEventName'], columns=['teamName']).fillna(0)
         # summary.columns = summary.columns.droplevel()
 
-        st.subheader(eventName)
-        st.table(
-            summary
-            .style
-            .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
-            .bar(vmin=0, vmax=summary.max().max()+10)
-            )
-        # st.dataframe(summary.style.bar())
-        # st.dataframe(summary, width=1000)
+        with col:
+            st.subheader(eventName)
+            st.table(
+                summary
+                .style
+                .set_properties(**{'max-width': '80px', 'font-size': '15pt'})
+                .bar(vmin=0, vmax=summary.max().max()+10)
+                )
+            # st.dataframe(summary.style.bar())
+            # st.dataframe(summary, width=1000)
         
